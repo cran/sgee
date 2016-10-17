@@ -1,0 +1,100 @@
+2016-10-16      Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Updated various functions
+	1) added subset and contrasts functionality
+	2) added a print function for sgee objects
+	3) other minor changes/ polishes
+
+2016-09-15	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Began preparing package for CRAN submission
+	1) Re-did comments the were previously done manually using roxygen2
+	2) Removed older functiosn that were not intended for distirbution
+	3) Renamed packaged to sgee
+
+
+2016-07-26	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added Poisson data generation
+	1) simpleDataGeneration function can now generate correlated
+	poisson data
+
+
+
+2016-02-20	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added AUCCalculator function
+	1) calculates AUC for a set of logisitc regression fittings
+	vs. true values
+	* Cleaned SEE, GSEE, and examples in manual files
+	* Removed Dependancy on threeboost and MAtrix
+
+
+2016-02-19	Greg Vaughan <gregory.vaughan@uonn.edu>
+	* Added analyzeCoefficientPath function
+	1) takes in a coefficient path, and a predictive dataset
+		and analyzes it.
+	2) if given the true coefficent values, yields additional measures
+	* Added coefTraceplot function
+	1) plots the coefficient traceplot
+	2) provides options for yielding color or black and white plots
+	3) allows for covariate grouping identification
+
+
+2016-02-17	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added simpleDataGeneration, a function to generate gaussian
+	Data to test stagewise techniques
+	1) generates gaussian Data that is correlated
+	2) generates covariates that are also correlated
+	* Removed older implemnetations of SEE, BiSEE, and GSEE
+
+
+2016-01-13	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added GSEE, a simpler implementation of gBoost
+	1) Execute the forward stagewise procedure
+	2) uses L2 norm (the group lasso) as penalty
+	3)generates path as in the other functions
+
+2015-12-29	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added SEE, a simple implementation of EEBoost using
+	1) Execute the forward stagewise procedure
+	2) uses absolute value function (the lasso) as penalty
+	3)generates path as in the other functions
+
+2015-12-05 	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Modified How hBoost and sgBoost are executed
+	1) evaluateGEE.R was changed so that the intercept was updated
+	2) then phi and alpha are updated,
+	3) then the working correlation matrix is updated using updated alpha
+	4) then the mean parameters estimating equations are calculated
+	* Cleaned some of the manual files
+
+2015-09-20	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Modified Package structure
+	1) primary functions are called "hBoost" and
+	"sgBoost", for the hBoost and sgboost techniques.
+	2) other functions still present for simulation
+	purposes, but most will eventually be removed
+	* Added Examples for hBoost and sgBoost
+
+2015-08-17	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added gBoost, sgBoost, and hBoost
+	1) gBoost is threeBoostGroup but estimates
+	nuisance parameters as per liang and Zeger
+	(and under the assumption of one of each)
+	2) sgBoost is threeBoostGroupBiLevel2, but
+	again estimating nuisance parameters as suggested
+	in Liand and Zeger (also under the assumption of
+	only one of each)
+	3) hBoost is threeBoostGroupBiLevel, but
+	again estimating nuisance parameters as suggested
+	in Liand and Zeger (also under the assumption of
+	only one of each)
+
+2015-07-14	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added implementation of third Bi-level appraoch
+	1) new approach selects group based on largest gamma value,
+	rather than largest L-2 Norm
+	2) implemented in threeBoostGroupBievel2.R
+	3) It is intended to combine all of the approach in a later update
+
+2015-06-11	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Fixed implementaion of Weights
+	1) originally, the weights were inverted before transforming the path back, but this effectively multiplies the path of estimates by the inverse TWICE
+	2) i.e. we want W^(-1) %*% Beta, but what was being done was W^(-2) %*% Beta
