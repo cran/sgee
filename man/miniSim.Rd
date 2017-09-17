@@ -62,4 +62,3 @@ Currently still under development, so not exported.
 Gregory Vaughan
 }
 \keyword{internal}
-

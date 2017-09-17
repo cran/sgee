@@ -1,8 +1,7 @@
-
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016
+##   Copyright (C) 2016-2017
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -60,7 +59,7 @@
 #' @param corstr A character string indicating the desired working correlation
 #' structure. The following are implemented : "independence" (default value),
 #' "exchangeable", and "ar1".
-#' @param alpha An intial guess for the correlation parameter value
+#' @param alpha An initial guess for the correlation parameter value
 #' between -1 and 1 . If left NULL (the default), the initial estimate is 0.
 #' @param intercept Binary value indicating where an intercept term is
 #' to be included in the model for estimation. Default is to include an
@@ -76,11 +75,14 @@
 #' path is returned as the default, with a \code{standardizedPath} and
 #' \code{standardizedX} included
 #' separately. Default value is \code{TRUE}.
+#' @param verbose Logical parameter indicating whether output should be produced
+#' while hisee is running. Default value is FALSE.
 #' @param ... Not currently used
 #' 
 #' @return Object of class 'sgee' containing the path of coefficient estimates,
 #' the path of scale estimates, the path of correlation parameter
-#' estimates, and the iteration at which HiSEE terminated, and intial regression
+#' estimates, and the iteration at which HiSEE terminated, and initial
+#' regression
 #' values including \code{x}, \code{y}, code{family}, \code{clusterID},
 #' \code{groupID}, \code{offset}, \code{epsilon}, and \code{numIt}.
 #' 
@@ -162,16 +164,16 @@ hisee <- function(y, ...) UseMethod("hisee")
 #' @param formula Object of class 'formula'; a symbolic description of
 #' the model to be fitted
 #' @param data Optional data frame containing the variables in the model.
-#' @param contrasts An optional list provided when using a formula.
-#' similar to \code{contrasts} from \code{glm}.
-#' See the \code{contrasts.arg} of \code{model.matrix.default}.
-#' @param subset An optional vector specifying a subset of observations to be
-#' used in the fitting process.
 #' @param waves An integer vector which identifies components in clusters.
 #' The length of \code{waves} should be the same as the number of
 #' observations. \code{waves} is automatically generated if none is supplied,
 #' but when using \code{subset} parameter, the \code{waves} parameter must be
 #' provided by the user for proper calculation.
+#' @param contrasts An optional list provided when using a formula.
+#' similar to \code{contrasts} from \code{glm}.
+#' See the \code{contrasts.arg} of \code{model.matrix.default}.
+#' @param subset An optional vector specifying a subset of observations to be
+#' used in the fitting process.
 #' 
 #' @rdname hisee
 #' @export
@@ -209,6 +211,14 @@ hisee.formula <- function(formula, data=list(),
     if(all(x[,1] ==1)){
         x <- x[,-1]
     }
+
+    if(any(colSums(x) == 0)){
+
+        cat("######## ERROR! ########\n")
+        cat(colnames(x)[colSums(x) == 0])
+        cat("\n")
+        stop("The above factors are not found in the given observations")
+    }
     results <- hisee.default(y, x,
                              clusterID = clusterID,
                              waves = waves,
@@ -245,17 +255,34 @@ function(y, x, family,
          intercept = TRUE,
          offset = 0,
          control = sgee.control(maxIt = 200, epsilon = 0.05,
-             stoppingThreshold =  min(nrow(y), ncol(x))-intercept),
+             stoppingThreshold =  min(length(y), ncol(x))-intercept,
+                                       undoThreshold = 0),
          standardize = TRUE,
+         verbose = FALSE,
          ...){
 
     #######################
     ## Preliminaries/set up
     #######################
+
     maxIt <- control$maxIt
     epsilon <- control$epsilon
+    undoThreshold <- control$undoThreshold
+    interceptLimit <- control$interceptLimit
+    ##If the undoThreshold is >= epsilon
+    ## the check wil always trigger;
+    ## so this check is added to prevent
+    ## an infinte loop
+    
+    if(undoThreshold >= epsilon){
+        if(verbose){
+            cat(paste0("****** undoThreshold too large! reducing threshold now **********\n"))
+        }
+        undoThreshold  <- epsilon/10
+    }
+    
     if(is.null(control$stoppingThreshold)){
-        stoppingThreshold <- min(nrow(y), ncol(x))-intercept
+        stoppingThreshold <- min(length(y), ncol(x))-intercept
     } else {
         stoppingThreshold <- control$stoppingThreshold
     }
@@ -328,7 +355,14 @@ function(y, x, family,
     ##################
     ## Main Algorithim
     ##################
-    for (it in 1:maxIt){
+    cat("\n")
+    oldDelta <- rep(0, length(beta)) 
+    it <- 0
+    while (it <maxIt){
+        it <- it +1
+        if(verbose){
+            cat(paste0("****** Beginning iteration # ", it, " **********\n"))
+        }
         GEEValues <- evaluateGEE(y = y,
                                  x = x,
                                  beta = beta,
@@ -344,7 +378,8 @@ function(y, x, family,
                                  mu.eta = mu.eta,
                                  varianceLink = varianceLink,
                                  corstr = corstr,
-                                 maxClusterSize = maxClusterSize)
+                                 maxClusterSize = maxClusterSize,
+                                 interceptLimit = interceptLimit)
 
         ## Update Estimates
         beta0 <- GEEValues$beta0
@@ -376,42 +411,86 @@ function(y, x, family,
         maxGradient <- max(abs(aCurrent))
         deltaIndex <- abs(aCurrent) == maxGradient
 
-        ## Update estimates
-        ## only the element in the group with the largest L2 norm
-        ## that itself has the largest magnitutde is incremented
-        beta[theGroup] <- beta[theGroup] + (deltaIndex * epsilon * sign(aCurrent[deltaIndex]))
+        if(verbose){
+            
 
-        ## Update Paths
-        if(intercept){
-            path[it,] <- c(beta0, beta)
         }
-        else{
-            path[it,] <-  beta
+        ## Check if the update is effectively undoing the last one
+        if (sum(abs(oldDelta[theGroup] + (deltaIndex * epsilon * sign(aCurrent[deltaIndex]))))<= undoThreshold){
+            if(verbose){
+                cat(paste0("****** Step Undone! Reducing Stepsize **********\n"))
+            }
+
+            if(it>2){
+                if (intercept){
+                    beta <- path[it - 2,-1]
+                } else {
+                    beta <- path[it - 2,]
+                }
+            } else{
+                beta <- rep(0, length(beta))
+            }
+            
+            epsilon <- epsilon/2
+            it <- it - 2
+            oldDelta <- rep(0, length(beta))
+
+            ##If the undoThreshold is >= epsilon
+            ## the check wil always trigger;
+            ## so this check is added to prevent
+            ## an infinte loop
+            if(undoThreshold >= epsilon){
+                if(verbose){
+                    cat(paste0("****** undoThreshold too large! reducing threshold now **********\n"))
+                }
+                undoThreshold  <- epsilon/10
+            }
+            
+            ## If the check is passed and the update
+            ## is sufficiently different from the previous
+            ## update
+        } else {
+            oldDelta <- rep(0, length(beta))
+            oldDelta[theGroup] <- (deltaIndex * epsilon * sign(aCurrent[deltaIndex]))
+
+        
+            ## Update estimates
+            ## only the element in the group with the largest L2 norm
+            ## that itself has the largest magnitutde is incremented
+            beta[theGroup] <- beta[theGroup] + (deltaIndex * epsilon * sign(aCurrent[deltaIndex]))
+            
+            ## Update Paths
+            if(intercept){
+                path[it,] <- c(beta0, beta)
+            }
+            else{
+                path[it,] <-  beta
+            }
+            phiPath[it,] <- phi
+            alphaPath[it,] <- alpha
+            
+            ###########
+            ## stopping mechanism when the alogrithim has reached saturation
+            if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
+                print("stopped on")
+                print(it)
+                print(a[delta])
+                path[((it+1):maxIt),] <- matrix(rep(path[it,],(maxIt - it)),
+                                                nrow = (maxIt - it),
+                                                byrow = TRUE)
+                phiPath[((it+1):maxIt),] <- matrix(rep(phiPath[it,],(maxIt - it)),
+                                                   nrow = (maxIt - it),
+                                                   byrow = TRUE)
+                alphaPath[((it+1):maxIt),] <- matrix(rep(alphaPath[it,],(maxIt - it)),
+                                                     nrow = (maxIt - it),
+                                                     byrow = TRUE)
+                
+                stoppedOn <- it
+                break
+            }
+            
         }
-        phiPath[it,] <- phi
-        alphaPath[it,] <- alpha
-
-        ###########
-        ## stopping mechanism when the alogrithim has reached saturation
-        if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
-          print("stopped on")
-          print(it)
-          print(a[delta])
-          path[((it+1):maxIt),] <- matrix(rep(path[it,],(maxIt - it)),
-                                         nrow = (maxIt - it),
-                                         byrow = TRUE)
-          phiPath[((it+1):maxIt),] <- matrix(rep(phiPath[it,],(maxIt - it)),
-                                         nrow = (maxIt - it),
-                                         byrow = TRUE)
-          alphaPath[((it+1):maxIt),] <- matrix(rep(alphaPath[it,],(maxIt - it)),
-                                         nrow = (maxIt - it),
-                                         byrow = TRUE)
-
-          stoppedOn <- it
-          break
-        }
-
-      }
+    }
 
     
     result <- list(path = path,

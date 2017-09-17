@@ -52,4 +52,3 @@ mat3 <- genCorMat(corstr = "unstructured",
 \author{
 Gregory Vaughan
 }
-

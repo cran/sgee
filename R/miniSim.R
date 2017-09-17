@@ -1,8 +1,7 @@
-
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016
+##   Copyright (C) 2016-2017
 ##
 ##   This file is part of the R package sgee.
 ##

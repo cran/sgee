@@ -7,8 +7,8 @@
 \usage{
 \method{plot}{sgee}(x, y, penaltyFun = NULL, main = NULL,
   xlab = "Iterations", ylab = expression(beta), dropIntercept = FALSE,
-  trueBeta = NULL, color = TRUE, manualLinecolors = NULL,
-  pointSpacing = 3, ...)
+  trueBeta = NULL, color = TRUE, manualLineColors = NULL,
+  pointSpacing = 3, cutOff = NULL, ...)
 
 \method{plot}{sgeeSummary}(x, y, ...)
 }
@@ -41,13 +41,17 @@ identifications as non-zero are marked in the plot.}
 \item{color}{Logical parameter indicating that a plot using colors
 to differentiate coefficients is desired.}
 
-\item{manualLinecolors}{Vector of desired line colors; must match dimension
+\item{manualLineColors}{Vector of desired line colors; must match dimension
 of line colors needed (i.e. same number of colors as there are groups if
 grouped covariates are sharing a color).}
 
 \item{pointSpacing}{Space between marks used to indicate a coefficient
 is a false positive. Spacing is measured in terms of number of indices
 of the path matrix between marks.}
+
+\item{cutOff}{Integer value indicating that only the first \code{cutOff}
+steps are to be plotted. Default value is \code{NULL}, indicating all
+steps are to be plotted.}
 
 \item{...}{Not currently used.}
 }
@@ -139,4 +143,3 @@ plot(coefMat, trueBeta = beta, color = FALSE, main =
 \author{
 Gregory Vaughan
 }
-

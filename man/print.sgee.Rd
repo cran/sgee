@@ -60,4 +60,3 @@ print(coefMat)
 \author{
 Gregory Vaughan
 }
-

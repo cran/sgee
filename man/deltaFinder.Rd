@@ -34,4 +34,3 @@ Internal function.
 Gregory Vaughan
 }
 \keyword{internal}
-

@@ -4,7 +4,8 @@
 \alias{sgee.control}
 \title{Auxiliary for Controlling SGEE fitting}
 \usage{
-sgee.control(maxIt = 200, epsilon = 0.05, stoppingThreshold = NULL)
+sgee.control(maxIt = 200, epsilon = 0.05, stoppingThreshold = NULL,
+  undoThreshold = 0.005, interceptLimit = NULL)
 }
 \arguments{
 \item{maxIt}{Maximum number of iterations of the stagewise algorithm to be
@@ -21,6 +22,24 @@ the number of observations. The default value is typically
 the minimum of the number
 of covariates and the number of observations, minus 1 if an intercept is
 included.}
+
+\item{undoThreshold}{A small value used to determine if consecutive
+steps are sufficiently different. If consecutive steps effectively undo each
+other (as indicated by having a sum with an absolute value less than
+\code{undoThreshold}), then the steps are repeated and the stepsize is
+reduced. A negative value for \code{undoThreshold} effectively prevents
+this step. \code{undoThreshold} should only be big enough to allow for
+some rounding error in steps and should be much smaller than the step size.
+Default value is 0.005.}
+
+\item{interceptLimit}{sgee functions make use of the extendInt parameter
+of uniroot to estimate the intercept in each iteration. This parameter
+was recently implemented and thus may cause issues with older versions of R.
+If a value is given for \code{interceptLimit}, then this extendInt parameter
+is bypassed and a solution for the intercept estimating equation is sought
+out between negative \code{interceptLimit} and positive
+\code{interceptLimit}. The default value of \code{NULL} uses the
+extendInt functionality.}
 }
 \value{
 A list containing all of the parameter values.
@@ -35,4 +54,3 @@ iterations \code{maxIt}, and the threshold for premature stopping
 \author{
 Gregory Vaughan
 }
-

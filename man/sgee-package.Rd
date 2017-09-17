@@ -2,8 +2,8 @@
 % Please edit documentation in R/sgee-package.R
 \docType{package}
 \name{sgee-package}
-\alias{sgee}
 \alias{sgee-package}
+\alias{sgee}
 \title{sgee: Stagewise Generalized Estimating Equations}
 \description{
 Provides functions to perform Boosting / Functional Gradient Descent /
@@ -12,7 +12,7 @@ Generalized Estimating Equations.
 }
 \details{
 \tabular{ll}{ Package: \tab sgee\cr Type: \tab Package\cr
-Version: \tab 0.2-0\cr Date: \tab 2016-10-16\cr License: \tab GPL (>= 3)
+Version: \tab 0.5-0\cr Date: \tab 2017-09-16\cr License: \tab GPL (>= 3)
 \cr } sgee provides several stagewise regression approaches
 that are designed to address variable selection with grouped covariates
 in the context of
@@ -72,13 +72,14 @@ coefMat1 <- hisee(y = generatedData$y, x = generatedData$x,
                   corstr="exchangeable",
                   control = sgee.control(maxIt = 100, epsilon = 0.2))
 
-
+## interceptLimit allows for compatibility with older R versions
 coefMat2 <- bisee(y = generatedData$y, x = generatedData$x,
                   family = gaussian(),
                   clusterID = generatedData$clusterID,
                   groupID = generatedData$groupID, 
                   corstr="exchangeable", 
-                  control = sgee.control(maxIt = 100, epsilon = 0.2),
+                  control = sgee.control(maxIt = 100, epsilon = 0.2,
+                                         interceptLimit = 10),
                   lambda1 = .5,
                   lambda2 = .5)
 
@@ -87,12 +88,6 @@ par(mfrow = c(2,1))
 plot(coefMat1)
 plot(coefMat2)
 
-}
-\author{
-Gregory Vaughan [aut, cre],
-Kun Chen [ctb], Jun Yan [ctb]
-
-Maintainer: Gregory Vaughan <gregory.vaughan@uconn.edu>
 }
 \references{
 G. Vaughan, R. Aseltine, K. Chen & J. Yan (2016). Stagewise
@@ -117,4 +112,9 @@ Springer, New York.
 Liang, K.-Y. and Zeger, S. L. (1986). Longitudinal data analysis
 using generalized linear models. Biometrika 73, 13--22.
 }
+\author{
+Gregory Vaughan [aut, cre],
+Kun Chen [ctb], Jun Yan [ctb]
 
+Maintainer: Gregory Vaughan <gregory.vaughan@uconn.edu>
+}

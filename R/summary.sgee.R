@@ -1,8 +1,7 @@
-
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016
+##   Copyright (C) 2016-2017
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -51,10 +50,20 @@
 #' is appended by\code{sgee.summary} if an intercept was used to make
 #' \code{object}.
 #' @param newY Response vector to be used for model testing.
+#' @param newOffset Vector of offsets to be used for model testing. Must be
+#' same length as newY.
 #' @param trueBeta For simulation use; true coefficient values can be provided
 #' to get certain metrics.
+#' @param trueIntercept For simulation use; true intercept value to be used in
+#' conjunction with trueBeta.
 #' @param scale Scale value can be passed to allow for standardized error
 #' measurements (poisson case only).
+#' @param classification A numeric parameter from 0 to 1 indicating
+#' cutoff to be used to determine classification rate in Binomial
+#' setting. Default is 0.5. Values below 0 indicate that the
+#' squared error, in either the observation
+#' or the true linear predictor is the trueBeta is given, is to be used
+#' instead of the classification rate.
 #' @param averaged Logical parameter indicating whether the mean of the
 #' total error is to be used; assumed TRUE.
 #' @param ... Currently not used.
@@ -63,7 +72,8 @@
 #' testing data set, 2) the smallest prediction error found along path,
 #' 3) the index of the smallest error, and if the trueBeta parameter is
 #' provided the False Positive, False Discovery, and false negative
-#' rates at the index of the smallest error, along with the minimum
+#' rates, and True positive and False Positive counts
+#' at the index of the smallest error, along with the minimum
 #' mis-classification and corresponding index, where the mis-classification
 #' is the total of the coefficients incorrectly marked as important/unimportant.
 #' 
@@ -124,15 +134,19 @@
 summary.sgee <- function(object,
                          newX = NULL,
                          newY = NULL,
+                         newOffset = NULL,
                          trueBeta = NULL,
+                         trueIntercept = NULL,
                          scale = NULL,
+                         classification = 0.5,
                          averaged = TRUE,
                          ...){
 
-
     path <- object$path
-    offset <- object$offset
+    interceptPath <- rep(0, nrow(path))
     modelingFamily <- object$family
+
+    
     
     it<- 0
     maxIt <- object$maxIt
@@ -141,13 +155,34 @@ summary.sgee <- function(object,
         cat("\nnewX and/or newY missing; original data used\n")
         newX <- object$x
         newY <- object$y
-    }
-    addIntercept <- object$intercept
-    if(addIntercept){
-        newX <- cbind(rep(1,nrow(newX)),
-                             newX)
+        offset <- object$offset
+    } else{
+        if(!is.null(newOffset)){
+            if(length(newOffset) != length(newY) & length(newOffset) != 1){
+                stop("length of newY and newOffset must match") 
+            } else{
+                offset <- newOffset
+            }
+        } else{
+            offset <- 0 
+        }
     }
     
+    addIntercept <- object$intercept
+    if(addIntercept){
+        interceptPath <- path[,1]
+        path <- path[,-1]
+        #newX <- cbind(rep(1,nrow(newX)),
+        #                     newX)
+    }
+
+    if(!is.null(trueBeta)){
+        if(is.null(trueIntercept)){
+            warning("trueIntercept Missing; assuming intercept of zero")
+            ##cat("\n trueIntercept Missing; assuming intercept of zero \n")
+            trueIntercept <- 0
+        }
+    }
     ## prediction measure used for comparison
     minMeasure <- Inf
     bestIndex <- 0
@@ -157,6 +192,8 @@ summary.sgee <- function(object,
         FP <- 0
         FD <- 0
         FN <- 0
+        TPCount <- 0
+        FPCount <- 0
         minMisClass <- Inf
         bestMisClassIndex <- 0
         allMisClass <- rep(0, maxIt)
@@ -164,7 +201,11 @@ summary.sgee <- function(object,
         
 
     if(!is.null(trueBeta)){
-        trueEta <- newX%*%trueBeta + offset
+        ##if(addIntercept){
+        ##    trueEta <- newX %*% c(trueIntercept, trueBeta) + offset
+        ##} else{
+            trueEta <- trueIntercept + newX %*% trueBeta + offset
+        ##}
     }
   while(it < maxIt){
     it <- it + 1
@@ -175,8 +216,8 @@ summary.sgee <- function(object,
     ## or when doing cross validation, instead of using
     ## new X and Y, the remaining fold can be supplied
 
-    
-    eta <- newX%*%path[it,] + offset
+
+    eta <- interceptPath[it] + newX%*%path[it,] + offset
     Yhat <- modelingFamily$linkinv(t(eta))
     if(is.null(trueBeta)){
         if(modelingFamily$family == "poisson"){
@@ -205,17 +246,25 @@ summary.sgee <- function(object,
 
            
             
-        }else{ ## non-poisson case
+        }else if(classification >=0 & modelingFamily$family == "binomial"){
+            error <- newY - (Yhat > classification)
+            measure <- sum(abs(error))
+        }else{ ## non-poisson/non-classification case
             
             error <- newY - Yhat
             measure <- sum(error^2)
         }
         
     } else{
-        ## If true beta is given, then theMSe in terms of the linear
-        ## predictor is given
+        if(classification >=0 & modelingFamily$family == "binomial"){
+            error <-  newY - (Yhat > classification)
+            measure <- sum(abs(error))
+        } else{
+            ## If true beta is given, then theMSe in terms of the linear
+            ## predictor is given
             error <- trueEta - eta
             measure <- sum(error^2)
+        }
     }
 
     allMeasures[it] <- measure
@@ -224,9 +273,12 @@ summary.sgee <- function(object,
       bestIndex <- it
       minMeasure <- measure
       if(!is.null(trueBeta)){
-          FP <- sum((path[it,] == 0) & (path[bestIndex,] != 0))/sum(path[it,] == 0)
-          FD <- sum((path[it,] == 0) & (path[bestIndex,] != 0))/sum(path[bestIndex,] != 0)
-          FN <- sum((path[it,] != 0) & (path[bestIndex,] == 0))/sum(path[it,] != 0)
+          TPCount <- sum((trueBeta != 0) & (path[bestIndex,] != 0))
+          FPCount <- sum((trueBeta == 0) & (path[bestIndex,] != 0))
+          FP <- FPCount/sum(trueBeta == 0)
+          FD <- sum((trueBeta == 0) & (path[bestIndex,] != 0))/sum(path[bestIndex,] != 0)
+          FN <- sum((trueBeta != 0) & (path[bestIndex,] == 0))/sum(trueBeta != 0)
+
       }
       
     }
@@ -243,9 +295,9 @@ summary.sgee <- function(object,
 
     
   }
-    if(modelingFamily$family == "binomial"){
-        minMeasure <- 1-minMeasure
-    }
+    ## if(modelingFamily$family == "binomial"){
+    ##     minMeasure <- 1-minMeasure
+    ## }
 
     if(averaged){
         allMeasures <- allMeasures/nrow(newX)
@@ -262,6 +314,8 @@ summary.sgee <- function(object,
                               FP = FP,
                               FD = FD,
                               FN = FN,
+                              TPCount = TPCount,
+                              FPCount = FPCount,
                               allMisClass = allMisClass,
                               minMisClass = minMisClass,
                               bestMisClassIndex = bestMisClassIndex)

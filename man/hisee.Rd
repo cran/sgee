@@ -2,9 +2,10 @@
 % Please edit documentation in R/hisee.R
 \name{hisee}
 \alias{hisee}
+\alias{hisee}
+\alias{hisee.formula}
 \alias{hisee.default}
 \alias{hisee.fit}
-\alias{hisee.formula}
 \title{Hierarchical Stagewise Estimating Equations Implementation.}
 \usage{
 hisee(y, ...)
@@ -17,8 +18,8 @@ hisee(y, ...)
 \method{hisee}{fit}(y, x, family, clusterID, waves = NULL,
   groupID = 1:ncol(x), corstr = "independence", alpha = NULL,
   intercept = TRUE, offset = 0, control = sgee.control(maxIt = 200,
-  epsilon = 0.05, stoppingThreshold = min(nrow(y), ncol(x)) - intercept),
-  standardize = TRUE, ...)
+  epsilon = 0.05, stoppingThreshold = min(length(y), ncol(x)) - intercept,
+  undoThreshold = 0), standardize = TRUE, verbose = FALSE, ...)
 }
 \arguments{
 \item{y}{Vector of response measures that corresponds with modeling family
@@ -68,7 +69,7 @@ integers.}
 structure. The following are implemented : "independence" (default value),
 "exchangeable", and "ar1".}
 
-\item{alpha}{An intial guess for the correlation parameter value
+\item{alpha}{An initial guess for the correlation parameter value
 between -1 and 1 . If left NULL (the default), the initial estimate is 0.}
 
 \item{intercept}{Binary value indicating where an intercept term is
@@ -88,11 +89,15 @@ If standardized before fitting, the unstandardized
 path is returned as the default, with a \code{standardizedPath} and
 \code{standardizedX} included
 separately. Default value is \code{TRUE}.}
+
+\item{verbose}{Logical parameter indicating whether output should be produced
+while hisee is running. Default value is FALSE.}
 }
 \value{
 Object of class 'sgee' containing the path of coefficient estimates,
 the path of scale estimates, the path of correlation parameter
-estimates, and the iteration at which HiSEE terminated, and intial regression
+estimates, and the iteration at which HiSEE terminated, and initial
+regression
 values including \code{x}, \code{y}, code{family}, \code{clusterID},
 \code{groupID}, \code{offset}, \code{epsilon}, and \code{numIt}.
 }
@@ -177,9 +182,6 @@ plot(coefMat1)
 plot(coefMat2)
 
 }
-\author{
-Gregory Vaughan
-}
 \references{
 G. Vaughan, R. Aseltine, K. Chen & J. Yan (2016). Stagewise
 Generalized Estimating Equations with Grouped Variables. Department of
@@ -192,4 +194,6 @@ American Statistical Association 106, 296--305.
 Tibshirani, R. J. (2015). A general framework for fast stagewise
 algorithms. Journal of Machine Learning Research 16, 2543--2588.
 }
-
+\author{
+Gregory Vaughan
+}

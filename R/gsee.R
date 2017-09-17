@@ -1,8 +1,7 @@
-
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016
+##   Copyright (C) 2016-2017
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -23,18 +22,34 @@ gsee <- function(y, x, family,
                  corstr="independence", alpha = NULL,
                  offset = 0, 
                  intercept = TRUE,
-                 control = sgee.control(maxIt = 200 , epsilon = 0.05,
-                     stoppingThreshold = min(nrow(y), ncol(x))-intercept),
+                 control = sgee.control(maxIt = 200, epsilon = 0.05, 
+                     stoppingThreshold =  min(length(y), ncol(x))-intercept,
+                     undoThreshold = 0.005),
                  standardize = TRUE,
+                 verbose = FALSE,
                  ...){
     
     #######################
     ## Preliminaries/set up
     #######################
+
     maxIt <- control$maxIt
     epsilon <- control$epsilon
+    undoThreshold <- control$undoThreshold
+    interceptLimit <- control$interceptLimit
+    ##If the undoThreshold is >= epsilon
+    ## the check wil always trigger;
+    ## so this check is added to prevent
+    ## an infinte loop
+    if(undoThreshold >= epsilon){
+        if(verbose){
+            cat(paste0("****** undoThreshold too large! reducing threshold now **********\n"))
+        }
+        undoThreshold  <- epsilon/10
+    }
+    
     if(is.null(control$stoppingThreshold)){
-        stoppingThreshold <- min(nrow(y), ncol(x))-intercept
+        stoppingThreshold <- min(length(y), ncol(x))-intercept
     } else {
         stoppingThreshold <- control$stoppingThreshold
     }
@@ -108,7 +123,14 @@ gsee <- function(y, x, family,
     ##################
     ## Main Algorithim
     ##################
-    for (it in 1:maxIt){
+    cat("\n")
+    oldDelta <- rep(0, length(beta)) 
+    it <- 0
+    while (it <maxIt){
+        it <- it +1
+        if(verbose){
+            cat(paste0("****** Beginning iteration # ", it, " **********\n"))
+        }
         GEEValues <- evaluateGEE(y = y,
                                  x = x,
                                  beta = beta,
@@ -124,7 +146,8 @@ gsee <- function(y, x, family,
                                  mu.eta = mu.eta,
                                  varianceLink = varianceLink,
                                  corstr = corstr,
-                                 maxClusterSize = maxClusterSize)
+                                 maxClusterSize = maxClusterSize,
+                                 interceptLimit = interceptLimit)
         ## Update Estimates
         beta0 <- GEEValues$beta0
         phi <- GEEValues$phiHat
@@ -143,48 +166,87 @@ gsee <- function(y, x, family,
           currentGroupIndex <- groupID == j
           
           aCurrent <- sumMean[currentGroupIndex]
-          a[j] <- -1*sqrt(sum(aCurrent^2))/sqrt(length(aCurrent))
+          a[j] <- sqrt(sum(aCurrent^2))/sqrt(length(aCurrent))
         }
         ## Identify optimal update        
-        delta <- which(a== min(a))
+        delta <- which(a== max(a))
         deltaGroupIndex <- groupID == delta
 
-        ## Update estimates
-        ##B_j^{[t]} = B_j^{[t-1]} - epsilon * U_j/(||U_j||_2 * sqrt(p_j))
-        beta[deltaGroupIndex] <- beta[deltaGroupIndex] -  epsilon * sumMean[deltaGroupIndex]/ (a[delta]*length(sumMean[deltaGroupIndex]))
+        ## Check if the update is effectively undoing the last one
+        if (sum(abs(oldDelta[deltaGroupIndex] + epsilon * sumMean[deltaGroupIndex]/ (a[delta]*length(sumMean[deltaGroupIndex]))))<= undoThreshold){
+            if(verbose){
+                cat(paste0("****** Step Undone! Reducing Stepsize **********\n"))
+            }
 
-        ## Update Paths
-        if(intercept){
-            path[it,] <- c(beta0, beta)
-        }
-        else{
-            path[it,] <-  beta
-        }
-        phiPath[it,] <- phi
-        alphaPath[it,] <- alpha
+            if(it>2){
+                if (intercept){
+                    beta <- path[it - 2,-1]
+                } else {
+                    beta <- path[it - 2,]
+                }
+            } else{
+                beta <- rep(0, length(beta))
+            }
+            
+            epsilon <- epsilon/2
+            it <- it - 2
+            oldDelta <- rep(0, length(beta))
 
-        ###########
-        ## stopping mechanism when the alogrithim has reached saturation
-        if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
-            print("stopped on")
-            print(it)
-            print(a[delta])
-            path[((it+1):maxIt),] <- matrix(rep(path[it,],(maxIt - it)),
-                                           nrow = (maxIt - it),
-                                           byrow = TRUE)
-            phiPath[((it+1):maxIt),] <- matrix(rep(phiPath[it,],(maxIt - it)),
-                                              nrow = (maxIt - it),
-                                              byrow = TRUE)
-            alphaPath[((it+1):maxIt),] <- matrix(rep(alphaPath[it,],(maxIt - it)),
+            ##If the undoThreshold is >= epsilon
+            ## the check wil always trigger;
+            ## so this check is added to prevent
+            ## an infinte loop
+            if(undoThreshold >= epsilon){
+                if(verbose){
+                    cat(paste0("****** undoThreshold too large! reducing threshold now **********\n"))
+                }
+                undoThreshold  <- epsilon/10
+            }
+            
+            ## If the check is passed and the update
+            ## is sufficiently different from the previous
+            ## update
+        } else {
+            oldDelta <- rep(0, length(beta))
+            oldDelta[deltaGroupIndex] <- epsilon * sumMean[deltaGroupIndex]/ (a[delta]*length(sumMean[deltaGroupIndex]))
+
+        
+            ## Update estimates
+            ##B_j^{[t]} = B_j^{[t-1]} - epsilon * U_j/(||U_j||_2 * sqrt(p_j))
+            beta[deltaGroupIndex] <- beta[deltaGroupIndex] +  epsilon * sumMean[deltaGroupIndex]/ (a[delta]*length(sumMean[deltaGroupIndex]))
+
+            ## Update Paths
+            if(intercept){
+                path[it,] <- c(beta0, beta)
+            }
+            else{
+                path[it,] <-  beta
+            }
+            phiPath[it,] <- phi
+            alphaPath[it,] <- alpha
+            
+            ###########
+            ## stopping mechanism when the alogrithim has reached saturation
+            if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
+                print("stopped on")
+                print(it)
+                print(a[delta])
+                path[((it+1):maxIt),] <- matrix(rep(path[it,],(maxIt - it)),
                                                 nrow = (maxIt - it),
                                                 byrow = TRUE)
+                phiPath[((it+1):maxIt),] <- matrix(rep(phiPath[it,],(maxIt - it)),
+                                                   nrow = (maxIt - it),
+                                                   byrow = TRUE)
+                alphaPath[((it+1):maxIt),] <- matrix(rep(alphaPath[it,],(maxIt - it)),
+                                                     nrow = (maxIt - it),
+                                                byrow = TRUE)
+                
+                stoppedOn <- it
+                break
+            }
             
-            stoppedOn <- it
-            break
         }
-        
-      }
-
+    }
 
     
 

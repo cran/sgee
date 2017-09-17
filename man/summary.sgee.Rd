@@ -4,8 +4,9 @@
 \alias{summary.sgee}
 \title{Coefficient Path summary}
 \usage{
-\method{summary}{sgee}(object, newX = NULL, newY = NULL, trueBeta = NULL,
-  scale = NULL, averaged = TRUE, ...)
+\method{summary}{sgee}(object, newX = NULL, newY = NULL, newOffset = NULL,
+  trueBeta = NULL, trueIntercept = NULL, scale = NULL,
+  classification = 0.5, averaged = TRUE, ...)
 }
 \arguments{
 \item{object}{Object of class \code{sgee}, from which various path
@@ -18,11 +19,24 @@ is appended by\code{sgee.summary} if an intercept was used to make
 
 \item{newY}{Response vector to be used for model testing.}
 
+\item{newOffset}{Vector of offsets to be used for model testing. Must be
+same length as newY.}
+
 \item{trueBeta}{For simulation use; true coefficient values can be provided
 to get certain metrics.}
 
+\item{trueIntercept}{For simulation use; true intercept value to be used in
+conjunction with trueBeta.}
+
 \item{scale}{Scale value can be passed to allow for standardized error
 measurements (poisson case only).}
+
+\item{classification}{A numeric parameter from 0 to 1 indicating
+cutoff to be used to determine classification rate in Binomial
+setting. Default is 0.5. Values below 0 indicate that the
+squared error, in either the observation
+or the true linear predictor is the trueBeta is given, is to be used
+instead of the classification rate.}
 
 \item{averaged}{Logical parameter indicating whether the mean of the
 total error is to be used; assumed TRUE.}
@@ -34,7 +48,8 @@ A list containing  1) a vector of prediction errors with
 testing data set, 2) the smallest prediction error found along path,
 3) the index of the smallest error, and if the trueBeta parameter is
 provided the False Positive, False Discovery, and false negative
-rates at the index of the smallest error, along with the minimum
+rates, and True positive and False Positive counts
+at the index of the smallest error, along with the minimum
 mis-classification and corresponding index, where the mis-classification
 is the total of the coefficients incorrectly marked as important/unimportant.
 }
@@ -122,4 +137,3 @@ analysisResults <- summary(coefMat,
 \author{
 Gregory Vaughan
 }
-

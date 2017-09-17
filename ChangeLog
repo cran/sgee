@@ -1,3 +1,89 @@
+2017-08-04      Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added functionality for binary data
+	1) Originally, genData function was not set up to produce
+	"correlated" binary data, now it can
+	2) similarly, the sgee.summary function treated binary
+	settings in the same way it treated gaussian data. Now,
+	the function can evaluate based on classification rate
+	* Minor corrections
+	1) corrected a typo in bisee maunal
+	2) corrected some minor presentations in genData and
+	print.sgeeSummary functions
+
+
+2017-07-02	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Corrected multiple issues in isee
+	1) originally, isee could not create an interractionID
+	in the presence of more than two factor levels
+	2) also, isee could not construct interactionIDs properly when there was only one covaraite
+	3) isee did not check whether or not factor levels were actually obsevred, now it does
+	4) neither did bisee or hisee, now they do
+
+2017-06-21	Greg Vuaghan <greogry.vaughan@uconn.edu>
+	* Merged isee and hlsee into one function called isee
+	1) also isee and hlsee methods were renamed ACTS and HiLa, repsectively
+
+2017-06-17      Greg Vuaghan <gregory.vaughan@uconn.edu>
+	* Corrected estimation of correlation parameter w/ Ar-1 structure
+
+2017-06-06	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Corrected implementation of genData to allows for xVariance
+
+2017-05-16	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added standardization functionality to isee and hlsee
+	1) standardization occurs immediately before fitting takes place
+	2) this is after the intercept terms have been generated, so both the main covariates and the interaction terms are standardized
+
+
+2017-02-28	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added intercept estimation switch, interceptLimit
+	1) default implementation uses uniroot with extendInt to estimate
+	   intercept in each iteration
+	2) when interceptLimit is set however, a fixed bound on the intercept
+	   can be set
+	3) This allows compatability with older versions of R which did not
+	   have the extendInt functionality
+
+2017-02-20	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Updated isee
+	1) changed the implementation of the active set management
+	2) speed should be improved mow
+
+2017-02-14	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Updated hlsee
+	1) changed the way the proper update is calculated
+	2) method of selection is the dsame, calculations are just
+	   done in a faster way
+
+2017-02-12	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Updated hlsee
+	1) changed decision process when choosing main v. int effects
+	2) now uses |U_{ij}| + |U_{ii}| + |U_{jj}| vs. 3|U_{zz}|
+
+
+2017-01-04	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Patched bug affecting the calculation of stopping threshold
+	1) nrow of y, the response vector was used
+	2) replaced with length, since y may be a vector
+
+
+2016-12-27	Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Added stepsize reduction functionality
+	1) using new control variable called undoThreshold
+	2) if sum(abs(oldDeta + newDelta)) <= undoThreshold, then
+	stepsize is reduced
+	3) added functionality to also reduce threshold if >= stepsize
+	4) Corrected a bug in plot function that would use the range
+	of the intercept even if the intercept wasn't being plotted
+	5) add row of zeros in plot function so path starts from origin,
+	not including the itnercept which simply starts from initial estimate
+
+2016-10-19      Greg Vaughan <gregory.vaughan@uconn.edu>
+	* Began adding interaction stagewisee implementations
+	1) added, isee, which implements zhu's work
+	2) added hlsee, which implements bien's hierarchical lasso
+	3) modified genData to allow for the creation of interaction data
+
 2016-10-16      Greg Vaughan <gregory.vaughan@uconn.edu>
 	* Updated various functions
 	1) added subset and contrasts functionality

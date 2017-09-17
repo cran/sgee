@@ -1,8 +1,7 @@
-
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016
+##   Copyright (C) 2016-2017
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -74,15 +73,15 @@
 #' @param corstr A character string indicating the desired working correlation
 #' structure. The following are implemented : "independence" (default value),
 #' "exchangeable", and "ar1".
-#' @param alpha An intial guess for the correlation parameter value
+#' @param alpha An initial guess for the correlation parameter value
 #' between -1 and 1 . If left NULL (the default), the initial estimate is 0.
-#' @param lambda1 Mixing parameter used to indicate weight of $L_1$ Norm
-#' (individual selection). While not necessary, \code{lambda1} and
+#' @param lambda1 Mixing parameter used to indicate weight of $L_2$ Norm
+#' (group selection). While not necessary, \code{lambda1} and
 #' \code{lambda2} are
 #' best set to sum to 1 as only the weights relative to each other matter.
 #' Default value is set to .5.
-#' @param lambda2 Mixing parameter used to indicate weight of $L_2$ Norm (group
-#' selection). While not necessary, \code{lambda1} and
+#' @param lambda2 Mixing parameter used to indicate weight of $L_1$ Norm
+#' (individual selection). While not necessary, \code{lambda1} and
 #' \code{lambda2} are best set to sum
 #' to 1 as only the weights relative to each other matter.  Default value is
 #' set to \code{1-lambda1}.
@@ -101,12 +100,14 @@
 #' path is returned as the default, with a \code{standardizedPath} and
 #' \code{standardizedX} included
 #' separately. Default value is \code{TRUE}.
+#' @param verbose Logical parameter indicating whether output should be produced
+#' while bisee is running. Default value is FALSE.
 #' @param ... Not currently used
 #' 
 #' @return Object of class \code{sgee} containing the path
 #' of coefficient estimates,
 #' the path of scale estimates, the path of correlation parameter
-#' estimates, the iteration at which BiSEE terminated, and intial regression
+#' estimates, the iteration at which BiSEE terminated, and initial regression
 #' values including \code{x}, \code{y}, code{family}, \code{clusterID},
 #' \code{groupID}, \code{offset}, \code{epsilon}, and \code{numIt}.
 #' 
@@ -168,7 +169,8 @@
 #'                  corstr = "exchangeable", 
 #'                  control = sgee.control(maxIt = 50, epsilon = 0.5),
 #'                  lambda1 = .5,
-#'                  lambda2 = .5)
+#'                  lambda2 = .5,
+#'                  verbose = TRUE)
 #'
 #'
 #' ## Perform Fitting by providing formula and data
@@ -176,14 +178,15 @@
 #' names(genDF) <- c("Y", paste0("Cov", 1:p))
 #' coefMat2 <- bisee(formula(genDF), data = genDF,
 #'                  family = gaussian(),
-#'                  subset = Y <1,
+#'                  subset = Y <1.5,
 #'                  waves = rep(1:4, 50), 
 #'                  clusterID = generatedData$clusterID,
 #'                  groupID = generatedData$groupID, 
 #'                  corstr = "exchangeable",
 #'                  control = sgee.control(maxIt = 50, epsilon = 0.5),
-#'                  lambda1 = 0,
-#'                  lambda2 = 0.5)
+#'                  lambda1 = 0.5,
+#'                  lambda2 = 0.5,
+#'                  verbose = TRUE)
 #' 
 #' par(mfrow = c(2,1))
 #' plot(coefMat1)
@@ -200,23 +203,23 @@ bisee <- function(y, ...) UseMethod("bisee")
 #' @param formula Object of class 'formula'; a symbolic description of
 #' the model to be fitted
 #' @param data Optional data frame containing the variables in the model.
-#' @param contrasts An optional list provided when using a formula.
-#' similar to \code{contrasts} from \code{glm}.
-#' See the \code{contrasts.arg} of \code{model.matrix.default}.
-#' @param subset An optional vector specifying a subset of observations to be
-#' used in the fitting process.
 #' @param waves An integer vector which identifies components in clusters.
 #' The length of \code{waves} should be the same as the number of
 #' observations. \code{waves} is automatically generated if none is supplied,
 #' but when using \code{subset} parameter, the \code{waves} parameter must be
 #' provided by the user for proper calculation.
+#' @param contrasts An optional list provided when using a formula.
+#' similar to \code{contrasts} from \code{glm}.
+#' See the \code{contrasts.arg} of \code{model.matrix.default}.
+#' @param subset An optional vector specifying a subset of observations to be
+#' used in the fitting process.
 #' 
 #' @export
 #' @rdname bisee
 bisee.formula <- function(formula, data=list(),
                           clusterID,
                           waves = NULL,
-                          lambda1, lambda2,
+                          lambda1, lambda2 = 1-lambda1,
                           contrasts = NULL,
                           subset,
                           ...)
@@ -248,6 +251,16 @@ bisee.formula <- function(formula, data=list(),
     if(all(x[,1] ==1)){
         x <- x[,-1]
     }
+
+    if(any(colSums(x) == 0)){
+
+        cat("######## ERROR! ########\n")
+        cat(colnames(x)[colSums(x) == 0])
+        cat("\n")
+        stop("The above factors are not found in the given observations")
+    }
+
+    
     results <- bisee.default(y, x,
                              clusterID = clusterID,
                              waves = waves,
@@ -263,9 +276,11 @@ bisee.formula <- function(formula, data=list(),
 #' @rdname bisee
 bisee.default <- function(y, x,
                           waves = NULL,
-                          lambda1, lambda2,
+                          lambda1, lambda2 = 1-lambda1,
                           ...){
-   
+
+
+
     if( lambda2 == 0){
         results <- gsee(y,x, waves = waves, ...)
     } else if(lambda1 == 0){
@@ -290,17 +305,33 @@ function(y, x, family,
          lambda1 = .5, lambda2 = 1-lambda1,
          intercept = TRUE,
          offset = 0,
-         control = sgee.control(maxIt = 200 , epsilon = 0.05,
-             stoppingThreshold =  min(nrow(y), ncol(x))-intercept),
+         control = sgee.control(maxIt = 200, epsilon = 0.05, 
+                    stoppingThreshold =  min(length(y), ncol(x))-intercept,
+                                       undoThreshold = 0.005),
          standardize = TRUE,
+         verbose = FALSE,
          ...){
     #######################
     ## Preliminaries/set up
     #######################
+
     maxIt <- control$maxIt
     epsilon <- control$epsilon
+    undoThreshold <- control$undoThreshold
+    interceptLimit <- control$interceptLimit
+    ##If the undoThreshold is >= epsilon
+    ## the check wil always trigger;
+    ## so this check is added to prevent
+    ## an infinte loop
+    if(undoThreshold >= epsilon){
+        if(verbose){
+            cat(paste0("****** undoThreshold too large! reducing threshold now **********\n"))
+        }
+        undoThreshold  <- epsilon/10
+    }
+    
     if(is.null(control$stoppingThreshold)){
-        stoppingThreshold <- min(nrow(y), ncol(x))-intercept
+        stoppingThreshold <- min(length(y), ncol(x))-intercept
     } else {
         stoppingThreshold <- control$stoppingThreshold
     }
@@ -384,7 +415,14 @@ function(y, x, family,
     ##################
     ## Main Algorithim
     ##################
-    for (it in 1:maxIt){
+    cat("\n")
+    oldDelta <- rep(0, length(beta)) 
+    it <- 0
+    while (it <maxIt){
+        it <- it +1
+        if(verbose){
+            cat(paste0("****** Beginning iteration # ", it, " **********\n"))
+        }
         GEEValues <- evaluateGEE(y = y,
                                  x = x,
                                  beta = beta,
@@ -400,7 +438,8 @@ function(y, x, family,
                                  mu.eta = mu.eta,
                                  varianceLink = varianceLink,
                                  corstr = corstr,
-                                 maxClusterSize = maxClusterSize)
+                                 maxClusterSize = maxClusterSize,
+                                 interceptLimit = interceptLimit)
 
         ## Update Estimates
         beta0 <- GEEValues$beta0
@@ -447,43 +486,81 @@ function(y, x, family,
         c <- epsilon/(lambda2*sum(abs(groupDelta)) + lambda1*sqrt(length(groupDelta)))
         ## final answer for a given group
         groupDelta <- groupDelta * c
-        
-        ## Update estimates
-        beta[theGroup] <- beta[theGroup] +  groupDelta
 
-        ## Update paths
-        if(intercept){
+        ## Check if the update is effectively undoing the last one
+        if (sum(abs(oldDelta[theGroup] + groupDelta))<= undoThreshold){
+            if(verbose){
+                cat(paste0("****** Step Undone! Reducing Stepsize **********\n"))
+            }
 
-            path[it,] <- c(beta0, beta)
+            if(it>2){
+                if (intercept){
+                    beta <- path[it - 2,-1]
+                } else {
+                    beta <- path[it - 2,]
+                }
+            } else{
+                beta <- rep(0, length(beta))
+            }
+            
+            epsilon <- epsilon/2
+            it <- it - 2
+            oldDelta <- rep(0, length(beta))
+
+            ##If the undoThreshold is >= epsilon
+            ## the check wil always trigger;
+            ## so this check is added to prevent
+            ## an infinte loop
+            if(undoThreshold >= epsilon){
+                if(verbose){
+                    cat(paste0("****** undoThreshold too large! reducing threshold now **********\n"))
+                }
+                undoThreshold  <- epsilon/10
+            }
+            
+            ## If the check is passed and the update
+            ## is sufficiently different from the previous
+            ## update
+        } else {
+            oldDelta <- rep(0, length(beta))
+            oldDelta[theGroup] <- groupDelta
+
+
+            ## Update estimates
+            beta[theGroup] <- beta[theGroup] +  groupDelta
+
+            ## Update paths
+            if(intercept){
+                path[it,] <- c(beta0, beta)
+            }
+            else{
+                path[it,] <-  beta
+            }
+            phiPath[it,] <- phi
+            alphaPath[it,] <- alpha
+
+            ###########
+            ## stopping mechanism when the alogrithim has reached saturation
+            if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
+                print("stopped on")
+                print(it)
+                print(a[delta])
+                path[((it+1):maxIt),] <- matrix(rep(path[it,],(maxIt - it)),
+                                                nrow = (maxIt - it),
+                                                byrow = TRUE)
+                phiPath[((it+1):maxIt),] <- matrix(rep(phiPath[it,],(maxIt - it)),
+                                                   nrow = (maxIt - it),
+                                                   byrow = TRUE)
+                alphaPath[((it+1):maxIt),] <- matrix(rep(alphaPath[it,],(maxIt - it)),
+                                                     nrow = (maxIt - it),
+                                                     byrow = TRUE)
+                
+                stoppedOn <- it
+                break
+            }
+
         }
-        else{
-            path[it,] <-  beta
-        }
-        phiPath[it,] <- phi
-        alphaPath[it,] <- alpha
-
-        ###########
-        ## stopping mechanism when the alogrithim has reached saturation
-        if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
-          print("stopped on")
-          print(it)
-          print(a[delta])
-          path[((it+1):maxIt),] <- matrix(rep(path[it,],(maxIt - it)),
-                                         nrow = (maxIt - it),
-                                         byrow = TRUE)
-          phiPath[((it+1):maxIt),] <- matrix(rep(phiPath[it,],(maxIt - it)),
-                                         nrow = (maxIt - it),
-                                         byrow = TRUE)
-          alphaPath[((it+1):maxIt),] <- matrix(rep(alphaPath[it,],(maxIt - it)),
-                                         nrow = (maxIt - it),
-                                         byrow = TRUE)
-
-          stoppedOn <- it
-          break
-        }
-
-      }
-
+    }
     
     result <- list(path = path,
                    gammaPath = phiPath,

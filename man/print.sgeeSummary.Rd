@@ -62,4 +62,3 @@ print(sgeeSum)
 \author{
 Gregory Vaughan
 }
-

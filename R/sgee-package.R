@@ -1,8 +1,7 @@
-
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016
+##   Copyright (C) 2016-2017
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -23,7 +22,7 @@
 #' Generalized Estimating Equations.
 #' 
 #' \tabular{ll}{ Package: \tab sgee\cr Type: \tab Package\cr
-#' Version: \tab 0.2-0\cr Date: \tab 2016-10-16\cr License: \tab GPL (>= 3)
+#' Version: \tab 0.5-0\cr Date: \tab 2017-09-16\cr License: \tab GPL (>= 3)
 #' \cr } sgee provides several stagewise regression approaches
 #' that are designed to address variable selection with grouped covariates
 #' in the context of
@@ -111,13 +110,14 @@
 #'                   corstr="exchangeable",
 #'                   control = sgee.control(maxIt = 100, epsilon = 0.2))
 #' 
-#' 
+#' ## interceptLimit allows for compatibility with older R versions
 #' coefMat2 <- bisee(y = generatedData$y, x = generatedData$x,
 #'                   family = gaussian(),
 #'                   clusterID = generatedData$clusterID,
 #'                   groupID = generatedData$groupID, 
 #'                   corstr="exchangeable", 
-#'                   control = sgee.control(maxIt = 100, epsilon = 0.2),
+#'                   control = sgee.control(maxIt = 100, epsilon = 0.2,
+#'                                          interceptLimit = 10),
 #'                   lambda1 = .5,
 #'                   lambda2 = .5)
 #' 

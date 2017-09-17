@@ -2,9 +2,10 @@
 % Please edit documentation in R/bisee.R, R/gsee.R, R/see.R
 \name{bisee}
 \alias{bisee}
+\alias{bisee}
+\alias{bisee.formula}
 \alias{bisee.default}
 \alias{bisee.fit}
-\alias{bisee.formula}
 \alias{gsee}
 \alias{see}
 \title{Bi-level Stagewise Estimating Equations Implementation}
@@ -12,25 +13,28 @@
 bisee(y, ...)
 
 \method{bisee}{formula}(formula, data = list(), clusterID, waves = NULL,
-  lambda1, lambda2, contrasts = NULL, subset, ...)
+  lambda1, lambda2 = 1 - lambda1, contrasts = NULL, subset, ...)
 
-\method{bisee}{default}(y, x, waves = NULL, lambda1, lambda2, ...)
+\method{bisee}{default}(y, x, waves = NULL, lambda1, lambda2 = 1 - lambda1,
+  ...)
 
 \method{bisee}{fit}(y, x, family, clusterID, waves = NULL, groupID,
   corstr = "independence", alpha = NULL, lambda1 = 0.5, lambda2 = 1 -
   lambda1, intercept = TRUE, offset = 0, control = sgee.control(maxIt =
-  200, epsilon = 0.05, stoppingThreshold = min(nrow(y), ncol(x)) - intercept),
-  standardize = TRUE, ...)
+  200, epsilon = 0.05, stoppingThreshold = min(length(y), ncol(x)) - intercept,
+  undoThreshold = 0.005), standardize = TRUE, verbose = FALSE, ...)
 
 gsee(y, x, family, clusterID, waves = NULL, groupID = 1:ncol(x),
   corstr = "independence", alpha = NULL, offset = 0, intercept = TRUE,
   control = sgee.control(maxIt = 200, epsilon = 0.05, stoppingThreshold =
-  min(nrow(y), ncol(x)) - intercept), standardize = TRUE, ...)
+  min(length(y), ncol(x)) - intercept, undoThreshold = 0.005),
+  standardize = TRUE, verbose = FALSE, ...)
 
 see(y, x, family, clusterID, waves = NULL, corstr = "independence",
   alpha = NULL, intercept = TRUE, offset = 0,
   control = sgee.control(maxIt = 200, epsilon = 0.05, stoppingThreshold =
-  min(nrow(y), ncol(x)) - intercept), standardize = TRUE, ...)
+  min(length(y), ncol(x)) - intercept, undoThreshold = 0), standardize = TRUE,
+  verbose = FALSE, ...)
 }
 \arguments{
 \item{y}{Vector of response measures that corresponds with modeling family
@@ -57,14 +61,14 @@ observations. \code{waves} is automatically generated if none is supplied,
 but when using \code{subset} parameter, the \code{waves} parameter must be
 provided by the user for proper calculation.}
 
-\item{lambda1}{Mixing parameter used to indicate weight of $L_1$ Norm
-(individual selection). While not necessary, \code{lambda1} and
+\item{lambda1}{Mixing parameter used to indicate weight of $L_2$ Norm
+(group selection). While not necessary, \code{lambda1} and
 \code{lambda2} are
 best set to sum to 1 as only the weights relative to each other matter.
 Default value is set to .5.}
 
-\item{lambda2}{Mixing parameter used to indicate weight of $L_2$ Norm (group
-selection). While not necessary, \code{lambda1} and
+\item{lambda2}{Mixing parameter used to indicate weight of $L_1$ Norm
+(individual selection). While not necessary, \code{lambda1} and
 \code{lambda2} are best set to sum
 to 1 as only the weights relative to each other matter.  Default value is
 set to \code{1-lambda1}.}
@@ -97,7 +101,7 @@ integers.}
 structure. The following are implemented : "independence" (default value),
 "exchangeable", and "ar1".}
 
-\item{alpha}{An intial guess for the correlation parameter value
+\item{alpha}{An initial guess for the correlation parameter value
 between -1 and 1 . If left NULL (the default), the initial estimate is 0.}
 
 \item{intercept}{Binary value indicating where an intercept term is
@@ -118,12 +122,15 @@ If standardized before fitting, the unstandardized
 path is returned as the default, with a \code{standardizedPath} and
 \code{standardizedX} included
 separately. Default value is \code{TRUE}.}
+
+\item{verbose}{Logical parameter indicating whether output should be produced
+while bisee is running. Default value is FALSE.}
 }
 \value{
 Object of class \code{sgee} containing the path
 of coefficient estimates,
 the path of scale estimates, the path of correlation parameter
-estimates, the iteration at which BiSEE terminated, and intial regression
+estimates, the iteration at which BiSEE terminated, and initial regression
 values including \code{x}, \code{y}, code{family}, \code{clusterID},
 \code{groupID}, \code{offset}, \code{epsilon}, and \code{numIt}.
 }
@@ -203,7 +210,8 @@ coefMat1 <- bisee(y = generatedData$y, x = generatedData$x,
                  corstr = "exchangeable", 
                  control = sgee.control(maxIt = 50, epsilon = 0.5),
                  lambda1 = .5,
-                 lambda2 = .5)
+                 lambda2 = .5,
+                 verbose = TRUE)
 
 
 ## Perform Fitting by providing formula and data
@@ -211,22 +219,20 @@ genDF <- data.frame(generatedData$y, generatedData$x)
 names(genDF) <- c("Y", paste0("Cov", 1:p))
 coefMat2 <- bisee(formula(genDF), data = genDF,
                  family = gaussian(),
-                 subset = Y <1,
+                 subset = Y <1.5,
                  waves = rep(1:4, 50), 
                  clusterID = generatedData$clusterID,
                  groupID = generatedData$groupID, 
                  corstr = "exchangeable",
                  control = sgee.control(maxIt = 50, epsilon = 0.5),
-                 lambda1 = 0,
-                 lambda2 = 0.5)
+                 lambda1 = 0.5,
+                 lambda2 = 0.5,
+                 verbose = TRUE)
 
 par(mfrow = c(2,1))
 plot(coefMat1)
 plot(coefMat2)
 
-}
-\author{
-Gregory Vaughan
 }
 \references{
 G. Vaughan, R. Aseltine, K. Chen & J. Yan (2016). Stagewise
@@ -244,4 +250,6 @@ Simon, N., Friedman, J., Hastie, T., and Tibshirani, R. (2013). A
 sparse-group lasso. Journal of Computational and Graphical
 Statistics 22, 231--245.
 }
-
+\author{
+Gregory Vaughan
+}

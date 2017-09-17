@@ -1,8 +1,7 @@
-
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016
+##   Copyright (C) 2016-2017
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -49,12 +48,15 @@
 #' identifications as non-zero are marked in the plot.
 #' @param color Logical parameter indicating that a plot using colors
 #' to differentiate coefficients is desired.
-#' @param manualLinecolors Vector of desired line colors; must match dimension
+#' @param manualLineColors Vector of desired line colors; must match dimension
 #' of line colors needed (i.e. same number of colors as there are groups if
 #' grouped covariates are sharing a color).
 #' @param pointSpacing Space between marks used to indicate a coefficient
 #' is a false positive. Spacing is measured in terms of number of indices
 #' of the path matrix between marks.
+#' @param cutOff Integer value indicating that only the first \code{cutOff}
+#' steps are to be plotted. Default value is \code{NULL}, indicating all
+#' steps are to be plotted.
 #' @param ... Not currently used.
 #' 
 #' @note Function is intended to give a visual representation of the
@@ -137,8 +139,9 @@ plot.sgee <- function(x,
                       dropIntercept = FALSE,
                       trueBeta = NULL,
                       color = TRUE,
-                      manualLinecolors = NULL,
+                      manualLineColors = NULL,
                       pointSpacing = 3,
+                      cutOff = NULL,
                       ...){
 
     
@@ -151,7 +154,17 @@ plot.sgee <- function(x,
         interceptIncluded <- FALSE
         dropIntercept <- FALSE
     }
+
+    ## Adding an empty row to path to make plotting appropriate
+    path <- rbind(0, path)
+    if(interceptIncluded){
+        ## using an empty intercept looks weird
+        ## so the initial intercept estimate is used
+        path[1,1] <- path[2,1]
+    }
     
+    interceptDropper <- rep(FALSE, ncol(path))
+    interceptDropper[1] <- dropIntercept
     plotPoints <- rep(FALSE, ncol(path) - dropIntercept)
     pchValues <- rep(4, length(plotPoints))
     linewidths <- rep(1, ncol(path)  - dropIntercept)
@@ -208,16 +221,28 @@ plot.sgee <- function(x,
         }
            
     }
-
-    if(!is.null(manualLinecolors)){
-        if(length(manualLinecolors) == length(linecolors)){
-            linecolors <- manualLinecolors
+    
+    if(!is.null(manualLineColors)){
+        if(length(manualLineColors) == length(linecolors)){
+            linecolors <- manualLineColors
         } else{
-            warning("manualLinecolors given not of appropriate length")
+            warning("manualLineColors given not of appropriate length \n
+ ########   USING DEFAULT COLORS ##########")
         }
     }
 
-
+    if(is.null(cutOff)){
+        cutOff <- nrow(path)
+    } else if(cutOff != round(cutOff) | cutOff<1 | cutOff > nrow(path)){
+        warning("cutOff value is invalid, using default")
+        cutOff <- nrow(path)
+    } else{
+        ## input cutOff is assumed to be referring
+        ## to a point on the path; adding an empty
+        ## row shift that point by 1
+        cutOff <- cutOff +1
+    }
+    
     if(is.null(penaltyFun)){
         ## Making it clear that w/o a penalty iterations
         ## are used for the x axis 
@@ -225,20 +250,20 @@ plot.sgee <- function(x,
                        main = main,
                        type = "n",
                        xlim = c(0,nrow(path)*1.1),
-                       ylim = range(path),
+                       ylim = range(path[,!interceptDropper]),
                        xlab = xlab,
                        ylab = ylab)
         graphics::abline(h=0)
         ## dumb used to prevent an empty list being returned
-        dumb <- sapply((1 + dropIntercept):ncol(path),function(j) { graphics::lines(1:nrow(path),
-                                                                  path[,j],
+        dumb <- sapply((1 + dropIntercept):ncol(path),function(j) { graphics::lines(1:cutOff,
+                                                                  path[1:cutOff,j, drop = FALSE],
                                                                   col = linecolors[j - dropIntercept],
                                                                   lty = linetypes[j - dropIntercept],
                                                                   lwd = linewidths[j - dropIntercept])
                                           
                                           if(plotPoints[j - dropIntercept]){
-                                              graphics::points((1:nrow(path))[path[,j]!=0][c(TRUE, rep(FALSE, pointSpacing))], #TFF used to not overload the plot with symbols
-                                                     path[,j][path[,j]!=0][c(TRUE, rep(FALSE, pointSpacing))],
+                                              graphics::points((1:nrow(path))[path[1:cutOff,j, drop = FALSE]!=0][c(TRUE, rep(FALSE, pointSpacing))], #TFF used to not overload the plot with symbols
+                                                     path[1:cutOff,j, drop = FALSE][path[1:cutOff,j, drop = FALSE]!=0][c(TRUE, rep(FALSE, pointSpacing))],
                                                      col = linecolors[j - dropIntercept],
                                                      pch = pchValues[j - dropIntercept],
                                                      cex = .5)            
@@ -261,20 +286,22 @@ plot.sgee <- function(x,
                        main = main,
                        type = "n",
                        xlim = c(0,max(penaltyValues)*1.1),
-                       ylim = range(path),
+                       ylim = range(path[,!interceptDropper]),
                        xlab = xlab,
                        ylab = ylab,
                        ann = !(is.null(xlab) & is.null(ylab)))
         graphics::abline(h=0)
+
+        
         ## dumb used to prevent an empty list being returned
-        dumb <- sapply((1 + dropIntercept):ncol(path),function(j) { graphics::lines(penaltyValues,
-                                                                  path[,j],
+        dumb <- sapply((1 + dropIntercept):ncol(path),function(j) { graphics::lines(penaltyValues[1:cutOff],
+                                                                  path[1:cutOff,j, drop = FALSE],
                                                                   col = linecolors[j - dropIntercept],
                                                                   lty = linetypes[j - dropIntercept],
                                                                   lwd = linewidths[j])
                                           if(plotPoints[j - dropIntercept]){
-                                              graphics::points(penaltyValues[path[,j]!=0][c(TRUE, rep(FALSE, pointSpacing))], #TFFF used to not overload the plot with symbols
-                                                     path[,j][path[,j]!=0][c(TRUE, rep(FALSE, pointSpacing))],
+                                              graphics::points(penaltyValues[path[1:cutOff,j, drop = FALSE]!=0][c(TRUE, rep(FALSE, pointSpacing))], #TFFF used to not overload the plot with symbols
+                                                     path[1:cutOff,j, drop = FALSE][path[1:cutOff,j, drop = FALSE]!=0][c(TRUE, rep(FALSE, pointSpacing))],
                                                      col = linecolors[j- dropIntercept],
                                                      pch = pchValues[j - dropIntercept],
                                                      cex = .5)            

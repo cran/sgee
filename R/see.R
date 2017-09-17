@@ -1,8 +1,7 @@
-
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016
+##   Copyright (C) 2016-2017
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -25,17 +24,32 @@ see <- function(y, x,  family,
                 intercept = TRUE,
                  offset = 0,
                 control = sgee.control(maxIt = 200, epsilon = 0.05, 
-                    stoppingThreshold =  min(nrow(y), ncol(x))-intercept),
+                    stoppingThreshold =  min(length(y), ncol(x))-intercept,
+                                       undoThreshold = 0),
                 standardize = TRUE,
+                verbose = FALSE,
                 ...){
     #######################
     ## Preliminaries/set up
     #######################
-    
+
     maxIt <- control$maxIt
     epsilon <- control$epsilon
+    undoThreshold <- control$undoThreshold
+    interceptLimit <- control$interceptLimit
+    ##If the undoThreshold is >= epsilon
+    ## the check wil always trigger;
+    ## so this check is added to prevent
+    ## an infinte loop
+    if(undoThreshold >= epsilon){
+        if(verbose){
+            cat(paste0("****** undoThreshold too large! reducing threshold now **********\n"))
+        }
+        undoThreshold  <- epsilon/10
+    }
+    
     if(is.null(control$stoppingThreshold)){
-        stoppingThreshold <- min(nrow(y), ncol(x))-intercept
+        stoppingThreshold <- min(length(y), ncol(x))-intercept
     } else {
         stoppingThreshold <- control$stoppingThreshold
     }
@@ -111,7 +125,14 @@ see <- function(y, x,  family,
     ##################
     ## Main Algorithim
     ##################
-    for (it in 1:maxIt){
+    cat("\n")
+    oldDelta <- rep(0, length(beta)) 
+    it <- 0
+    while (it <maxIt){
+        it <- it +1
+        if(verbose){
+            cat(paste0("****** Beginning iteration # ", it, " **********\n"))
+        }
         GEEValues <- evaluateGEE(y = y,
                                  x = x,
                                  beta = beta,
@@ -127,7 +148,8 @@ see <- function(y, x,  family,
                                  mu.eta = mu.eta,
                                  varianceLink = varianceLink,
                                  corstr = corstr,
-                                 maxClusterSize = maxClusterSize)
+                                 maxClusterSize = maxClusterSize,
+                                 interceptLimit = interceptLimit)
         ## Update Estimates
         beta0 <- GEEValues$beta0
         phi <- GEEValues$phiHat
@@ -140,40 +162,79 @@ see <- function(y, x,  family,
         ## Identify optimal update
         a <- abs(sumMean)   
         delta <- which(a== max(a))
-
-        ## Update estimates
-        beta[delta] <- beta[delta] +epsilon*sign(sumMean[delta]) 
-
-        ## Update the paths
-        if(intercept){
-            path[it,] <- c(beta0, beta)
-        }
-        else{
-            path[it,] <-  beta
-        }
-        phiPath[it,] <- phi
-        alphaPath[it,] <- alpha
         
-        ###########
-        ## stopping mechanism when the alogrithim has reached saturation
-        if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
-            print("stopped on")
-            print(it)
-            print(a[delta])
-            path[((it+1):maxIt),] <- matrix(rep(path[it,],(maxIt - it)),
-                                           nrow = (maxIt - it),
-                                           byrow = TRUE)
-            phiPath[((it+1):maxIt),] <- matrix(rep(phiPath[it,],(maxIt - it)),
-                                              nrow = (maxIt - it),
-                                              byrow = TRUE)
-            alphaPath[((it+1):maxIt),] <- matrix(rep(alphaPath[it,],(maxIt - it)),
+
+        ## Check if the update is effectively undoing the last one
+        if (sum(abs(oldDelta[delta] + epsilon*sign(sumMean[delta])))<= undoThreshold){
+            if(verbose){
+                cat(paste0("****** Step Undone! Reducing Stepsize **********\n"))
+            }
+
+            if(it>2){
+                if (intercept){
+                    beta <- path[it - 2,-1]
+                } else {
+                    beta <- path[it - 2,]
+                }
+            } else{
+                beta <- rep(0, length(beta))
+            }
+            
+            epsilon <- epsilon/2
+            it <- it - 2
+            oldDelta <- rep(0, length(beta))
+
+            ##If the undoThreshold is >= epsilon
+            ## the check wil always trigger;
+            ## so this check is added to prevent
+            ## an infinte loop
+            if(undoThreshold >= epsilon){
+                if(verbose){
+                    cat(paste0("****** undoThreshold too large! reducing threshold now **********\n"))
+                }
+                undoThreshold  <- epsilon/10
+            }
+            
+            ## If the check is passed and the update
+            ## is sufficiently different from the previous
+            ## update
+        } else {
+            oldDelta <- rep(0, length(beta))
+            oldDelta[delta] <- epsilon*sign(sumMean[delta])
+
+            ## Update estimates
+            beta[delta] <- beta[delta] +epsilon*sign(sumMean[delta]) 
+
+            ## Update the paths
+            if(intercept){
+                path[it,] <- c(beta0, beta)
+            }
+            else{
+                path[it,] <-  beta
+            }
+            phiPath[it,] <- phi
+            alphaPath[it,] <- alpha
+        
+            ###########
+            ## stopping mechanism when the alogrithim has reached saturation
+            if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
+                print("stopped on")
+                print(it)
+                print(a[delta])
+                path[((it+1):maxIt),] <- matrix(rep(path[it,],(maxIt - it)),
                                                 nrow = (maxIt - it),
                                                 byrow = TRUE)
-            
-            stoppedOn <- it
-            break
+                phiPath[((it+1):maxIt),] <- matrix(rep(phiPath[it,],(maxIt - it)),
+                                                   nrow = (maxIt - it),
+                                                   byrow = TRUE)
+                alphaPath[((it+1):maxIt),] <- matrix(rep(alphaPath[it,],(maxIt - it)),
+                                                     nrow = (maxIt - it),
+                                                     byrow = TRUE)
+                
+                stoppedOn <- it
+                break
+            }
         }
-        
     }
 
     
