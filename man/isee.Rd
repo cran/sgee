@@ -208,6 +208,11 @@ coefMat2 <- isee(formula(paste0("Y~(",
 
 }
 \references{
+Vaughan, G., Aseltine, R., Chen, K., Yan, J., (2017). Efficient
+interaction selection for clustered data via stagewise generalized
+estimating equations.  Department of Statistics, University of
+Connecticut. Technical Report.
+
 Zhu, R., Zhao, H., and Ma, S. (2014). Identifying
 gene-environment and gene-gene interactions using a progressive
 penalization approach. Genetic Epidemiology 38, 353--368.

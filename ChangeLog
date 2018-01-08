@@ -1,3 +1,31 @@
+2018-01-07     Greg Vaughan <gregory.vaughan@bentley.edu>
+	* Added stochastic stagewise funcitonality
+	1) currently only implemented for see function
+	2) using the sgee.control auxiliary function, the following
+	parameters can be provided by the user to specify the
+	stochastic version of see where the full data set is subsampled
+	to improve scalability: stochastic, sampleProb, reSample, and
+	withReplacement.
+	3) the default value of stochastic == 1 implements no subsampling,
+	i.e. the normal stagewise approach
+	4) for 0<stochastic <1, a proportion of the data equal to stochastic
+	is subsampled to perform the stagewise approach on.
+	5) The resalple parameter allows for multiple subsamples to be collected
+	as the path is being constructed resulting in more robust estimates
+	* minor alterations to other stagewise approaches
+	1) the maxCluserSize calcualtion previously used the table function
+	which was slower than simply taking the max of waves
+	2) the numClusters calculaiton previously assumed that the user
+	supplied clusterID parameter was sequential, i.e.e cluster ID of 3
+	was used only if cluster ID of 2 had already been used.
+	3) In the logistic regression setting, it is possible for the
+	estimating equatiosn to be very close to 0; this can result in a
+	loop when using the adaptive step size as the algorithm will
+	keep undoing its step. a threshold has been placed on the L1
+	Norm of the estimating equations; future updates may make this
+	threshold variable
+
+
 2017-08-04      Greg Vaughan <gregory.vaughan@uconn.edu>
 	* Added functionality for binary data
 	1) Originally, genData function was not set up to produce

@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016-2017
+##   Copyright (C) 2016-2018
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -89,9 +89,10 @@
 #' @note Function to execute HiSEE Technique. Functionally equivalent
 #' to SEE when all elements in groupID are unique.
 #' @author Gregory Vaughan
-#' @references G. Vaughan, R. Aseltine, K. Chen & J. Yan (2016). Stagewise
-#' Generalized Estimating Equations with Grouped Variables. Department of
-#' Statistics, University of Connecticut. Technical Report  16-09.
+#' @references Vaughan, G., Aseltine, R., Chen, K., Yan, J., (2017). Stagewise
+#' Generalized Estimating Equations with Grouped Variables. Biometrics 73,
+#' 1332-1342. URL: http://dx.doi.org/10.1111/biom.12669,
+#' doi:10.1111/biom.12669.
 #' 
 #' Wolfson, J. (2011). EEBoost: A general method for prediction
 #' and variable selection based on estimating equations. Journal of the
@@ -340,9 +341,9 @@ function(y, x, family,
     alphaPath <- matrix(rep(0,(maxIt)*q), nrow = maxIt)
 
 
-    numClusters <- max(clusterID)
-    maxClusterSize <- max(table(clusterID))
-    mu <- rep(0,length(y))
+    clusterIDs <- unique(clusterID)
+    numClusters <- length(clusterIDs)
+    maxClusterSize <- max(waves)
 
     ##stoppedOn added to keep track of when the algorithm stops
     ## it assumes it goes the whole lenght unless stopped prematurely
@@ -470,8 +471,14 @@ function(y, x, family,
             alphaPath[it,] <- alpha
             
             ###########
-            ## stopping mechanism when the alogrithim has reached saturation
-            if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
+            ## stopping mechanism when the alogrithim has
+            ## reached saturation.
+            ## sum(a) <0.5 threshold added to prevent possible loop
+            ## that can happen with binary data using the adaptive
+            ## step size where the algorithm thinks a step keeps
+            ## being undone, but really the estimating equations
+            ## are all VERY close to 0
+            if(((sum(beta != 0) >= stoppingThreshold) | sum(a) < 0.5 )& (it< maxIt) ){
                 print("stopped on")
                 print(it)
                 print(a[delta])

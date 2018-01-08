@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016-2017
+##   Copyright (C) 2016-2018
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -15,7 +15,7 @@
 ##   but WITHOUT ANY WARRANTY without even the implied warranty of
 ##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ##
-#################################################################################' Bi-level Stagewise Estimating Equations Implementation
+#################################################################################' Bi-Level Stagewise Estimating Equations Implementation
 #'
 #' 
 #' Function to perform BiSEE, a Bi-Level Boosting / Functional
@@ -53,7 +53,7 @@
 #' \code{clusterID}.
 #' @param x Design matrix of dimension \code{length(y)} x nvar,
 #' the number of variables, where each row is
-#' represents an obersvation of predictor variables. Assumed to be scaled.
+#' represents an observation of predictor variables. 
 #' @param family Modeling family that describes the marginal distribution of
 #' the response. Assumed to be an object such as \code{gaussian()} or
 #' \code{poisson()}.
@@ -116,9 +116,10 @@
 #' fix \code{lambda1 + lambda2 = 1}, this is not necessary. These parameters
 #' can be tuned using various approaches including cross validation.
 #' @author Gregory Vaughan
-#' @references G. Vaughan, R. Aseltine, K. Chen & J. Yan (2016). Stagewise
-#' Generalized Estimating Equations with Grouped Variables. Department of
-#' Statistics, University of Connecticut. Technical Report 16-09.
+#' @references Vaughan, G., Aseltine, R., Chen, K., Yan, J., (2017). Stagewise
+#' Generalized Estimating Equations with Grouped Variables. Biometrics 73,
+#' 1332-1342. URL: http://dx.doi.org/10.1111/biom.12669,
+#' doi:10.1111/biom.12669.
 #'
 #' Wolfson, J. (2011). EEBoost: A general method for prediction
 #' and variable selection based on estimating equations. Journal of the
@@ -247,7 +248,7 @@ bisee.formula <- function(formula, data=list(),
     y <- model.response(mf, "numeric")
     x <- model.matrix(attr(mf, "terms"), data=mf, contrasts)    
 
-    ## bisee deterimes intercept based on 'intercept' parameter
+    ## bisee determines intercept based on 'intercept' parameter
     if(all(x[,1] ==1)){
         x <- x[,-1]
     }
@@ -284,7 +285,7 @@ bisee.default <- function(y, x,
     if( lambda2 == 0){
         results <- gsee(y,x, waves = waves, ...)
     } else if(lambda1 == 0){
-        results <- see(y,x, waves = waves, ...)
+        results <- see.fit(y,x, waves = waves, ...)
     }else {
         results <- bisee.fit(y, x,
                              waves = waves,
@@ -387,11 +388,10 @@ function(y, x, family,
     ## currently assuming only intercept in estimating correlation
     alphaPath <- matrix(rep(0,(maxIt)*q), nrow = maxIt)
 
-
     
-    numClusters <- max(clusterID)
-    maxClusterSize <- max(table(clusterID))
-    mu <- rep(0,length(y))
+    clusterIDs <- unique(clusterID)
+    numClusters <- length(clusterIDs)
+    maxClusterSize <- max(waves)
 
     ## it is assumed that the penalty is applied only to a single group
     ## not all ofthe covariates at once
@@ -540,8 +540,14 @@ function(y, x, family,
             alphaPath[it,] <- alpha
 
             ###########
-            ## stopping mechanism when the alogrithim has reached saturation
-            if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
+            ## stopping mechanism when the alogrithim has
+            ## reached saturation.
+            ## sum(a) <0.5 threshold added to prevent possible loop
+            ## that can happen with binary data using the adaptive
+            ## step size where the algorithm thinks a step keeps
+            ## being undone, but really the estimating equations
+            ## are all VERY close to 0
+            if(((sum(beta != 0) >= stoppingThreshold) | sum(a) < 0.5 )& (it< maxIt) ){
                 print("stopped on")
                 print(it)
                 print(a[delta])

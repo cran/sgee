@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016-2017
+##   Copyright (C) 2016-2018
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -22,7 +22,7 @@
 #' Generalized Estimating Equations.
 #' 
 #' \tabular{ll}{ Package: \tab sgee\cr Type: \tab Package\cr
-#' Version: \tab 0.5-0\cr Date: \tab 2017-09-16\cr License: \tab GPL (>= 3)
+#' Version: \tab 0.6-0\cr Date: \tab 2018-01-08\cr License: \tab GPL (>= 3)
 #' \cr } sgee provides several stagewise regression approaches
 #' that are designed to address variable selection with grouped covariates
 #' in the context of
@@ -50,9 +50,15 @@
 #' Kun Chen [ctb], Jun Yan [ctb]
 #' 
 #' Maintainer: Gregory Vaughan <gregory.vaughan@uconn.edu>
-#' @references G. Vaughan, R. Aseltine, K. Chen & J. Yan (2016). Stagewise
-#' Generalized Estimating Equations with Grouped Variables. Department of
-#' Statistics, University of Connecticut. Technical Report  16-09.
+#' @references Vaughan, G., Aseltine, R., Chen, K., Yan, J., (2017). Stagewise
+#' Generalized Estimating Equations with Grouped Variables. Biometrics 73,
+#' 1332-1342. URL: http://dx.doi.org/10.1111/biom.12669,
+#' doi:10.1111/biom.12669.
+#'
+#' Vaughan, G., Aseltine, R., Chen, K., Yan, J., (2017). Efficient
+#' interaction selection for clustered data via stagewise generalized
+#' estimating equations.  Department of Statistics, University of
+#' Connecticut. Technical Report.
 #' 
 #' Wolfson, J. (2011). EEBoost: A general method for prediction
 #' and variable selection based on estimating equations. Journal of the

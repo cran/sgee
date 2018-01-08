@@ -5,7 +5,8 @@
 \title{Auxiliary for Controlling SGEE fitting}
 \usage{
 sgee.control(maxIt = 200, epsilon = 0.05, stoppingThreshold = NULL,
-  undoThreshold = 0.005, interceptLimit = NULL)
+  undoThreshold = 0.005, interceptLimit = NULL, stochastic = 1,
+  sampleProb = NULL, reSample = 1, withReplacement = FALSE)
 }
 \arguments{
 \item{maxIt}{Maximum number of iterations of the stagewise algorithm to be
@@ -40,6 +41,31 @@ is bypassed and a solution for the intercept estimating equation is sought
 out between negative \code{interceptLimit} and positive
 \code{interceptLimit}. The default value of \code{NULL} uses the
 extendInt functionality.}
+
+\item{stochastic}{A numeric value between 0 (exclusive) and 1 (inclusive)
+to indicate what proportion of the data should be subsampled
+in the stochastic implementation of stagewise approached. The default value
+of 1 implements the standard deterministic approach where no subsampling
+is done.}
+
+\item{sampleProb}{A user provided value dictating the
+probability distribution for stochastic stagewise approaches.
+\code{sampleProb} can be provided as 1) a vector of
+fixed values of length equal to the resposne vector y, 2) a function
+that takes in a list of values (full list of values given in details)
+and returns a vector of length equal to the response vector y, or 3) the
+default value of \code{NULL}, which results in a uniform distribution}
+
+\item{reSample}{Parameter indicating how frequently a subsample is
+collected in stochastic stagewise approaches. If reSample == 1 then
+a subsample is collected every iteration,if reSample == 2 a subsample
+is collected every two (i.e every other) iteration. If reSample == 0,
+(the default value) then a subsample is only collected once
+before any iterations have been done.}
+
+\item{withReplacement}{a Logical value indicating if the subsampling in
+stochastic stagewise approaches should be done with or without replacement.
+Default values is \code{FALSE}.}
 }
 \value{
 A list containing all of the parameter values.

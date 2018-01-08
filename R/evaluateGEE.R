@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016-2017
+##   Copyright (C) 2016-2018
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -16,7 +16,7 @@
 ##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ##
 ################################################################################## Function intended to support gBoost, sgBoost, and hBoost
-## functions by evaluating the GEEs
+## functions by evaluating the GEEs 
 evaluateGEE <- function(y,
                         x,
                         beta,

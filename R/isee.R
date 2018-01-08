@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2017
+##   Copyright (C) 2017-2018
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -109,7 +109,12 @@
 #' approach is more appropriate.
 #' 
 #' @author Gregory Vaughan
-#' @references Zhu, R., Zhao, H., and Ma, S. (2014). Identifying
+#' @references Vaughan, G., Aseltine, R., Chen, K., Yan, J., (2017). Efficient
+#' interaction selection for clustered data via stagewise generalized
+#' estimating equations.  Department of Statistics, University of
+#' Connecticut. Technical Report.
+#'
+#' Zhu, R., Zhao, H., and Ma, S. (2014). Identifying
 #' gene-environment and gene-gene interactions using a progressive
 #' penalization approach. Genetic Epidemiology 38, 353--368.
 #' @references Bien, J., Taylor, J., and Tibshirani, R. (2013). A lasso
@@ -434,9 +439,9 @@ acts.fit <-
     alphaPath <- matrix(rep(0,(maxIt)*q), nrow = maxIt)
 
 
-    numClusters <- max(clusterID)
-    maxClusterSize <- max(table(clusterID))
-    mu <- rep(0,length(y))
+    clusterIDs <- unique(clusterID)
+    numClusters <- length(clusterIDs)
+    maxClusterSize <- max(waves)
 
     ##stoppedOn added to keep track of when the algorithm stops
     ## it assumes it goes the whole lenght unless stopped prematurely
@@ -573,8 +578,14 @@ acts.fit <-
             alphaPath[it,] <- alpha
             
             ###########
-            ## stopping mechanism when the alogrithim has reached saturation
-            if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
+            ## stopping mechanism when the alogrithim has
+            ## reached saturation.
+            ## sum(a) <0.5 threshold added to prevent possible loop
+            ## that can happen with binary data using the adaptive
+            ## step size where the algorithm thinks a step keeps
+            ## being undone, but really the estimating equations
+            ## are all VERY close to 0
+            if(((sum(beta != 0) >= stoppingThreshold) | sum(a) < 0.5 )& (it< maxIt) ){
                 print("stopped on")
                 print(it)
                 print(a[delta])
@@ -747,9 +758,9 @@ hila.fit <-
     alphaPath <- matrix(rep(0,(maxIt)*q), nrow = maxIt)
 
 
-    numClusters <- max(clusterID)
-    maxClusterSize <- max(table(clusterID))
-    mu <- rep(0,length(y))
+    clusterIDs <- unique(clusterID)
+    numClusters <- length(clusterIDs)
+    maxClusterSize <- max(waves)
 
     ##stoppedOn added to keep track of when the algorithm stops
     ## it assumes it goes the whole lenght unless stopped prematurely
@@ -900,8 +911,14 @@ hila.fit <-
             alphaPath[it,] <- alpha
 
             ###########
-            ## stopping mechanism when the alogrithim has reached saturation
-            if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
+            ## stopping mechanism when the alogrithim has
+            ## reached saturation.
+            ## sum(a) <0.5 threshold added to prevent possible loop
+            ## that can happen with binary data using the adaptive
+            ## step size where the algorithm thinks a step keeps
+            ## being undone, but really the estimating equations
+            ## are all VERY close to 0
+            if(((sum(beta != 0) >= stoppingThreshold) | sum(a) < 0.5 )& (it< maxIt) ){
                 print("stopped on")
                 print(it)
                 print(a[delta])

@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ##   R package sgee by Gregory Vaughan, Kun Chen, and Jun Yan
-##   Copyright (C) 2016-2017
+##   Copyright (C) 2016-2018
 ##
 ##   This file is part of the R package sgee.
 ##
@@ -15,7 +15,8 @@
 ##   but WITHOUT ANY WARRANTY without even the implied warranty of
 ##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ##
-#################################################################################' @export
+################################################################################
+#' @export
 #' @rdname bisee
 gsee <- function(y, x, family,
                  clusterID, waves = NULL, groupID = 1:ncol(x),
@@ -107,9 +108,9 @@ gsee <- function(y, x, family,
     alphaPath <- matrix(rep(0,(maxIt)*q), nrow = maxIt)
 
 
-    numClusters <- max(clusterID)
-    maxClusterSize <- max(table(clusterID))    
-    mu <- rep(0,length(y))
+    clusterIDs <- unique(clusterID)
+    numClusters <- length(clusterIDs)
+    maxClusterSize <- max(waves)
 
     ##stoppedOn added to keep track of when the algorithm stops
     ## it assumes it goes the whole lenght unless stopped prematurely
@@ -226,8 +227,14 @@ gsee <- function(y, x, family,
             alphaPath[it,] <- alpha
             
             ###########
-            ## stopping mechanism when the alogrithim has reached saturation
-            if((sum(beta != 0) >= stoppingThreshold) & (it< maxIt) ){
+            ## stopping mechanism when the alogrithim has
+            ## reached saturation.
+            ## sum(a) <0.5 threshold added to prevent possible loop
+            ## that can happen with binary data using the adaptive
+            ## step size where the algorithm thinks a step keeps
+            ## being undone, but really the estimating equations
+            ## are all VERY close to 0
+            if(((sum(beta != 0) >= stoppingThreshold) | sum(a) < 0.5 )& (it< maxIt) ){
                 print("stopped on")
                 print(it)
                 print(a[delta])
@@ -262,7 +269,7 @@ gsee <- function(y, x, family,
                    groupID = groupID,
                    family = family,
                    offset = offset,
-                   epsilon)
+                   epsilon = epsilon)
 
     if(standardize){
         result$x <- unstandardizedX
